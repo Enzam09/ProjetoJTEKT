@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JTEKT Smart Route AI — Sistema Inteligente de Controle e Otimização de Percursos</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ============================================================ SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">JT</div>
+      <div class="brand-text">
+        <div class="brand-name">JTEKT</div>
+        <div class="brand-sub">Smart Route AI</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-section-label">OPERAÇÃO</div>
+      <div class="nav-item active" data-view="dashboard"><span class="nav-icon">▦</span>Dashboard</div>
+      <div class="nav-item" data-view="mapa"><span class="nav-icon">⌗</span>Mapa de Percursos</div>
+      <div class="nav-item" data-view="agvs"><span class="nav-icon">▲</span>AGVs</div>
+      <div class="nav-item" data-view="amrs"><span class="nav-icon">●</span>AMRs</div>
+      <div class="nav-item" data-view="sensores"><span class="nav-icon">◈</span>Sensores</div>
+
+      <div class="nav-section-label">INTELIGÊNCIA</div>
+      <div class="nav-item" data-view="rotas"><span class="nav-icon">⤳</span>Rotas</div>
+      <div class="nav-item" data-view="ia"><span class="nav-icon">✦</span>Inteligência Artificial</div>
+
+      <div class="nav-section-label">ANÁLISE</div>
+      <div class="nav-item" data-view="historico"><span class="nav-icon">⏱</span>Histórico</div>
+      <div class="nav-item" data-view="indicadores"><span class="nav-icon">◔</span>Indicadores</div>
+      <div class="nav-item" data-view="alertas"><span class="nav-icon">⚠</span>Alertas<span class="nav-badge" id="alertBadge"></span></div>
+
+      <div class="nav-section-label">SISTEMA</div>
+      <div class="nav-item" data-view="config"><span class="nav-icon">⚙</span>Configurações</div>
+    </nav>
+
+    <div class="sidebar-footer">
+      JTEKT Smart Route AI<br>v1.0 · Ambiente de simulação
+    </div>
+  </aside>
+
+  <!-- ============================================================ TOPBAR -->
+  <header class="topbar">
+    <button class="icon-btn" id="menuToggle" style="display:none">☰</button>
+    <div class="view-title" id="viewTitleWrap">
+      <span id="viewTitle">Dashboard</span>
+      <small id="viewSubtitle">Visão geral da operação em tempo real</small>
+    </div>
+
+    <div class="topbar-stats">
+      <div class="topbar-stat"><span class="dot cyan"></span>AGVs <b id="topAgvCount">–</b></div>
+      <div class="topbar-stat"><span class="dot"></span>AMRs <b id="topAmrCount">–</b></div>
+      <div class="topbar-stat"><span class="dot blue"></span>Sensores <b id="topSensorCount">–</b></div>
+    </div>
+
+    <div class="topbar-divider"></div>
+    <button class="icon-btn" id="themeToggle" title="Alternar tema">☀</button>
+
+    <div class="topbar-clock">
+      <span id="clockTime">--:--:--</span>
+      <small id="clockDate">—</small>
+    </div>
+
+    <div class="topbar-divider"></div>
+    <div class="topbar-user">
+      <div class="avatar">RM</div>
+      <div>
+        <div class="u-name">R. Matsuda</div>
+        <div class="u-role">Operador de Logística</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================ MAIN -->
+  <main class="main">
+
+    <!-- ================= DASHBOARD ================= -->
+    <section class="view active" id="view-dashboard">
+      <div class="view-header">
+        <div>
+          <h2>Visão Geral</h2>
+          <p>Status consolidado da operação de AGVs e AMRs na planta</p>
+        </div>
+      </div>
+
+      <div class="kpi-grid" id="dashKpis"></div>
+
+      <div class="dash-grid">
+        <div class="panel">
+          <div class="panel-title">Tempo de Percurso — Últimas Missões <small>minutos, planejado</small></div>
+          <div class="spark-bars" id="sparkMissions"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Tempo Economizado pela IA <small>estimativa mensal</small></div>
+          <div class="kpi-value" style="font-size:38px"><span id="timeSavedValue">–</span><span class="unit">h/mês</span></div>
+          <p class="kpi-sub">Baseado na comparação entre tempo planejado e tempo real das rotas otimizadas pela IA.</p>
+        </div>
+      </div>
+
+      <div class="dash-grid-3">
+        <div class="panel">
+          <div class="panel-title">Congestionamento por Rota</div>
+          <div class="spark-bars" id="sparkCongestion"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Eficiência das Rotas <small>score IA</small></div>
+          <div class="spark-bars" id="sparkEfficiency"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Melhores Rotas (IA) <small>top 3</small></div>
+          <div class="route-cards" id="dashTopRoutes" style="gap:6px"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Alertas Recentes</div>
+        <div class="alert-list" id="dashAlerts"></div>
+      </div>
+    </section>
+
+    <!-- ================= MAPA ================= -->
+    <section class="view no-scroll" id="view-mapa">
+      <div class="map-view-wrap">
+        <div style="position:relative">
+          <div id="factoryMap"></div>
+          <div class="map-toolbar">
+            <button id="zoomIn" title="Zoom +">＋</button>
+            <button id="zoomOut" title="Zoom −">－</button>
+            <div class="sep"></div>
+            <button id="zoomCenter" title="Centralizar">⌖</button>
+            <button id="zoomSat" title="Satélite/Mapa">◐</button>
+          </div>
+          <div class="map-legend">
+            <div class="item"><span class="sw" style="background:#00e676"></span>Rota recomendada</div>
+            <div class="item"><span class="sw" style="background:#ffb43d"></span>Rota alternativa</div>
+            <div class="item"><span class="sw" style="background:#ff8a3d"></span>Congestionada</div>
+            <div class="item"><span class="sw" style="background:#ff5470"></span>Bloqueada</div>
+          </div>
+        </div>
+        <div class="map-side">
+          <div class="panel-title">Camadas <small>ligar/desligar</small></div>
+          <div class="layers-list" id="layerToggles">
+            <label><input type="checkbox" value="routes" checked> Rotas</label>
+            <label><input type="checkbox" value="agv" checked> AGVs</label>
+            <label><input type="checkbox" value="amr" checked> AMRs</label>
+            <label><input type="checkbox" value="sensors" checked> Sensores</label>
+            <label><input type="checkbox" value="obstacles" checked> Obstáculos</label>
+            <label><input type="checkbox" value="stations" checked> Estações</label>
+          </div>
+          <div style="margin-top:16px">
+            <button class="btn" id="clearHighlightBtn" style="width:100%">Limpar destaque de rota</button>
+          </div>
+          <div style="margin-top:18px" class="panel-title">Legenda de equipamentos</div>
+          <div class="alert-item ok" style="align-items:center"><span class="marker-equip agv" style="position:static;width:18px;height:18px;font-size:9px">▲</span><div>AGV — veículo guiado automaticamente</div></div>
+          <div class="alert-item ok" style="align-items:center;margin-top:6px"><span class="marker-equip amr" style="position:static;width:18px;height:18px;font-size:9px">●</span><div>AMR — robô móvel autônomo</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= AGVs ================= -->
+    <section class="view" id="view-agvs">
+      <div class="view-header"><div><h2>Frota de AGVs</h2><p>Veículos guiados automaticamente em operação</p></div></div>
+      <div class="panel" id="agvTable"></div>
+    </section>
+
+    <!-- ================= AMRs ================= -->
+    <section class="view" id="view-amrs">
+      <div class="view-header"><div><h2>Frota de AMRs</h2><p>Robôs móveis autônomos em operação</p></div></div>
+      <div class="panel" id="amrTable"></div>
+    </section>
+
+    <!-- ================= SENSORES ================= -->
+    <section class="view" id="view-sensores">
+      <div class="view-header"><div><h2>Rede de Sensores</h2><p>Sensores de presença, proximidade, RFID e segurança instalados na planta</p></div></div>
+      <div class="panel" id="sensorsTable"></div>
+    </section>
+
+    <!-- ================= ROTAS ================= -->
+    <section class="view" id="view-rotas">
+      <div class="view-header"><div><h2>Malha de Rotas</h2><p>Todos os percursos cadastrados, ranqueados pelo score da IA</p></div></div>
+      <div class="panel" style="margin-bottom:14px">
+        <div class="panel-title">Ranking Geral <small>maior score no topo</small></div>
+        <div class="route-cards" id="routesRanked"></div>
+      </div>
+      <div class="panel" id="routesTable"></div>
+    </section>
+
+    <!-- ================= IA ================= -->
+    <section class="view" id="view-ia">
+      <div class="view-header"><div><h2>AI Route Optimizer</h2><p>Selecione origem, destino e equipamento para a IA calcular a melhor rota</p></div></div>
+
+      <div class="panel" style="margin-bottom:14px">
+        <div class="toolbar-row">
+          <div>
+            <label class="kpi-sub" style="display:block;margin-bottom:4px">Origem</label>
+            <select class="select" id="optOrigin"></select>
+          </div>
+          <div>
+            <label class="kpi-sub" style="display:block;margin-bottom:4px">Destino</label>
+            <select class="select" id="optDestination"></select>
+          </div>
+          <div>
+            <label class="kpi-sub" style="display:block;margin-bottom:4px">Equipamento</label>
+            <select class="select" id="optEquip"></select>
+          </div>
+          <button class="btn btn-primary" id="optimizeBtn" style="align-self:flex-end">Otimizar Rota</button>
+        </div>
+        <p class="kpi-sub">Fórmula do score: 35% menor tempo · 25% menor distância · 15% menor congestionamento · 10% segurança · 10% histórico · 5% eficiência energética.</p>
+      </div>
+
+      <div class="panel" id="optimizerResult">
+        <p class="kpi-sub">Selecione origem, destino e equipamento, depois clique em "Otimizar Rota" para ver a recomendação da IA.</p>
+      </div>
+    </section>
+
+    <!-- ================= HISTÓRICO ================= -->
+    <section class="view" id="view-historico">
+      <div class="view-header"><div><h2>Histórico de Missões</h2><p>Missões concluídas pela frota</p></div></div>
+      <div class="toolbar-row">
+        <select class="select" id="histEquipFilter"></select>
+        <select class="select" id="histStatusFilter"></select>
+      </div>
+      <div class="panel" id="historyTable"></div>
+    </section>
+
+    <!-- ================= INDICADORES ================= -->
+    <section class="view" id="view-indicadores">
+      <div class="view-header"><div><h2>Indicadores Operacionais</h2><p>KPIs consolidados da malha de rotas</p></div></div>
+      <div class="kpi-grid" id="indicatorsGrid"></div>
+      <div class="dash-grid">
+        <div class="panel">
+          <div class="panel-title">Tempo Estimado por Rota <small>minutos</small></div>
+          <div class="spark-bars" id="indTimePerRoute"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Missões por Dia <small>últimos dias com registro</small></div>
+          <div class="spark-bars" id="indMissionsPerDay"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ALERTAS ================= -->
+    <section class="view" id="view-alertas">
+      <div class="view-header"><div><h2>Central de Alertas</h2><p>Eventos gerados pela operação e pela IA</p></div></div>
+      <div class="alert-list" id="alertsList"></div>
+    </section>
+
+    <!-- ================= CONFIGURAÇÕES ================= -->
+    <section class="view" id="view-config">
+      <div class="view-header"><div><h2>Configurações</h2><p>Preferências do sistema</p></div></div>
+      <div class="panel" style="max-width:520px">
+        <div class="panel-title">Aparência</div>
+        <p class="kpi-sub" style="margin-bottom:10px">Alterne entre modo escuro (padrão) e modo claro usando o botão ☀/🌙 na barra superior.</p>
+        <div class="panel-title">Integrações futuras</div>
+        <p class="kpi-sub">Este ambiente utiliza dados simulados (js/data.js). A arquitetura foi preparada para receber, futuramente, dados reais via API REST, MQTT, OPC-UA, RFID/RTLS e sistemas MES/WMS, substituindo a camada de mock sem alterar as demais camadas do sistema.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data.js"></script>
+<script src="ai.js"></script>
+<script src="map.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
